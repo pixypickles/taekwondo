@@ -1,0 +1,13 @@
+window.MOVES={
+ idle:{name:'構え',dur:.1,dmg:0,bal:0,hit:null},
+ small:{name:'小キック',dur:.42,dmg:40,bal:10,hit:{start:.17,end:.26,x:70,y:-68,w:95,h:30}},
+ big:{name:'大キック',dur:.58,dmg:70,bal:18,hit:{start:.24,end:.36,x:78,y:-78,w:120,h:34}},
+ neryo:{name:'ネリョチャギ',dur:.62,dmg:75,bal:20,hit:{start:.28,end:.43,x:55,y:-150,w:72,h:125}},
+ jump_spin:{name:'跳び後ろ回し蹴り',dur:.86,dmg:110,bal:32,hit:{start:.45,end:.60,x:85,y:-120,w:145,h:40}},
+ retreat_round:{name:'下がりトルリョチャギ',dur:.55,dmg:55,bal:18,move:-85,hit:{start:.23,end:.34,x:55,y:-85,w:105,h:32}},
+ retreat_back:{name:'下がり跳びティッチャギ',dur:.76,dmg:85,bal:28,move:-125,hit:{start:.35,end:.50,x:75,y:-80,w:125,h:34}},
+ rotate:{name:'回転フェイント',dur:.34,dmg:0,bal:0,hit:null},
+ dwit:{name:'ティッチャギ（後ろ蹴り）',dur:.58,dmg:90,bal:28,hit:{start:.27,end:.38,x:92,y:-78,w:135,h:32}},
+ hurigi:{name:'ティフリギ（後ろ回し蹴り）',dur:.72,dmg:105,bal:34,hit:{start:.42,end:.56,x:75,y:-120,w:160,h:38}},
+ guard:{name:'ガード',dur:.2,dmg:0,bal:0,hit:null}
+};

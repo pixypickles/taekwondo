@@ -1,0 +1,15 @@
+html, body { margin:0; height:100%; background:#111; overflow:hidden; font-family: system-ui, sans-serif; }
+#game-wrap { position:relative; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; }
+canvas { width:100vw; height:auto; max-height:100vh; background:#87ceeb; image-rendering:auto; }
+#touch-ui { position:absolute; inset:0; pointer-events:none; }
+button { pointer-events:auto; border:0; color:white; font-weight:800; box-shadow:0 4px 10px #0008; }
+.dpad { position:absolute; left:24px; bottom:26px; width:170px; height:170px; }
+.dpad button { position:absolute; width:60px; height:60px; border-radius:14px; background:#253044cc; font-size:26px; }
+.dpad .up { left:55px; top:0; } .dpad .down { left:55px; bottom:0; background:#d8a400dd; }
+.dpad .left { left:0; top:55px; } .dpad .right { right:0; top:55px; }
+.buttons { position:absolute; right:24px; bottom:28px; width:245px; height:150px; }
+.buttons button { position:absolute; border-radius:50%; }
+.small { left:0; top:0; width:78px; height:78px; background:#146ac8dd; font-size:36px; }
+.big { left:90px; top:0; width:82px; height:82px; background:#c82a2add; font-size:38px; }
+.guard { right:0; bottom:0; width:92px; height:92px; background:#333d; font-size:18px; }
+@media (min-width: 900px) { #touch-ui { opacity:.7; } }

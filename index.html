@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Taekwondo Mobile Prototype</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="screen">
+  <canvas id="game" width="960" height="540"></canvas>
+  <div id="pad">
+    <div class="dpad">
+      <button data-key="up" class="up">▲</button>
+      <button data-key="left" class="left">◀</button>
+      <button data-key="right" class="right">▶</button>
+      <button data-key="down" class="down">▼</button>
+    </div>
+    <div class="action">
+      <button data-key="small" class="small">小</button>
+      <button data-key="big" class="big">大</button>
+      <button data-key="guard" class="guard">ガード</button>
+    </div>
+  </div>
+</div>
+<script src="js/game.js"></script>
+</body>
+</html>

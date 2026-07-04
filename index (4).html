@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Taekwondo v012 Single</title>
+  <style>
+html,body{
+  margin:0;width:100%;height:100%;overflow:hidden;background:#172434;
+  touch-action:none;font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;
+}
+#game{display:block;width:100vw;height:100vh}
+#bars{position:fixed;top:8px;left:10px;right:10px;height:56px;z-index:5;color:#fff;font-weight:900;text-shadow:0 2px 4px #000;pointer-events:none}
+.barWrap{position:absolute;top:18px;width:38%;height:18px;border:2px solid rgba(255,255,255,.65);background:rgba(0,0,0,.25);border-radius:12px;overflow:hidden}
+.hp{height:100%;width:100%;background:#23d45a}
+.balWrap{position:absolute;top:42px;width:38%;height:8px;border:1px solid rgba(255,255,255,.45);background:rgba(0,0,0,.25);border-radius:8px;overflow:hidden}
+.bal{height:100%;width:100%;background:#8be4ff}
+#pHpWrap,#pBalWrap{left:0}#eHpWrap,#eBalWrap{right:0}
+#pLabel{position:absolute;left:3px;top:0;font-size:12px}#eLabel{position:absolute;right:3px;top:0;font-size:12px}
+#hud{position:fixed;top:68px;left:10px;color:white;text-shadow:0 2px 4px #000;z-index:4;pointer-events:none}
+#moveName{font-size:20px;font-weight:900}
+#spinText{font-size:16px;font-weight:900;letter-spacing:.05em;margin-top:3px}
+#debug{font-size:12px;opacity:.75;margin-top:3px}
+#controls{position:fixed;left:0;right:0;bottom:max(12px,env(safe-area-inset-bottom));height:172px;z-index:10;pointer-events:none}
+button{position:absolute;width:66px;height:66px;border-radius:50%;border:3px solid rgba(255,255,255,.48);background:rgba(255,255,255,.20);color:#fff;font-size:28px;font-weight:900;pointer-events:auto;user-select:none;-webkit-tap-highlight-color:transparent}
+button.down,button:active{transform:scale(.94);background:rgba(255,255,255,.36)}
+.up{left:96px;bottom:96px}.left{left:24px;bottom:28px}.rotate{left:96px;bottom:28px;background:rgba(190,170,70,.45)}.right{left:168px;bottom:28px}
+.small{right:184px;bottom:28px;background:rgba(30,135,255,.48)}.big{right:106px;bottom:28px;background:rgba(255,70,80,.50)}.guard{right:28px;bottom:28px;background:rgba(30,35,45,.72)}
+@media(max-height:640px){
+  #controls{height:148px}button{width:58px;height:58px;font-size:24px}
+  .up{left:92px;bottom:82px}.left{left:26px;bottom:22px}.rotate{left:92px;bottom:22px}.right{left:158px;bottom:22px}
+  .small{right:164px;bottom:22px}.big{right:94px;bottom:22px}.guard{right:24px;bottom:22px}
+}
+
+</style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="bars">
+    <div id="pLabel">PLAYER</div><div id="eLabel">CPU</div>
+    <div id="pHpWrap" class="barWrap"><div id="pHp" class="hp"></div></div>
+    <div id="eHpWrap" class="barWrap"><div id="eHp" class="hp"></div></div>
+    <div id="pBalWrap" class="balWrap"><div id="pBal" class="bal"></div></div>
+    <div id="eBalWrap" class="balWrap"><div id="eBal" class="bal"></div></div>
+  </div>
+
+  <div id="hud">
+    <div id="moveName">構え</div>
+    <div id="spinText"></div>
+    <div id="debug">v012 single / 押し蹴り入力変更</div>
+  </div>
+
+  <div id="controls">
+    <button class="up" data-btn="up">↑</button>
+    <button class="left" data-btn="left">←</button>
+    <button class="rotate" data-btn="rotate">回</button>
+    <button class="right" data-btn="right">→</button>
+    <button class="small" data-btn="small">小</button>
+    <button class="big" data-btn="big">大</button>
+    <button class="guard" data-btn="guard">G</button>
+  </div>
+<script>
+
+/* ===== moves.js ===== */
+(function(){
+  window.MOVES = {
+    idle:{name:"構え",dur:1,frames:[{t:0,pose:"idle"}]},
+
+    ap:{name:"アプチャギ",dur:340,damage:5,bal:8,kb:18,range:105,height:-10,hit:[.45,.62],frames:[
+      {t:0,pose:"load"},{t:.28,pose:"knee"},{t:.52,pose:"front",trail:"short"},{t:1,pose:"idle"}
+    ]},
+
+    dol:{name:"トルリョチャギ",dur:420,damage:8,bal:10,kb:30,range:125,height:-35,hit:[.50,.68],frames:[
+      {t:0,pose:"load"},{t:.30,pose:"knee"},{t:.58,pose:"round",trail:"round"},{t:1,pose:"idle"}
+    ]},
+
+    putcho:{name:"プッチョ",dur:250,damage:4,bal:6,kb:14,range:112,height:-35,hit:[.34,.54],frames:[
+      {t:0,pose:"stepIn",x:10},{t:.30,pose:"putchoLoad",x:26},{t:.48,pose:"putcho",x:36,trail:"snap"},{t:1,pose:"idle",x:42}
+    ]},
+
+    milgi:{name:"押し蹴り",dur:390,damage:3,bal:16,kb:90,range:148,height:-18,hit:[.42,.72],push:true,frames:[
+      {t:0,pose:"stepIn",x:12},{t:.25,pose:"pushLoad",x:28},{t:.55,pose:"pushKick",x:45,trail:"push"},{t:1,pose:"idle",x:50}
+    ]},
+
+    rot:{name:"回転フェイント",dur:470,frames:[
+      {t:0,pose:"closed",y:-8,trail:"bodySpin1"},
+      {t:.38,pose:"back",trail:"bodySpin2"},
+      {t:.64,pose:"closed",y:-8,trail:"bodySpin3"},
+      {t:1,pose:"idle"}
+    ]},
+
+    dwit:{name:"ティッチャギ",dur:410,damage:12,bal:18,kb:46,range:160,height:-62,hit:[.56,.76],heavy:true,frames:[
+      {t:0,pose:"closed",y:-8,trail:"bodySpin1"},
+      {t:.22,pose:"back",y:-3,trail:"bodySpin2"},
+      {t:.40,pose:"backLoad",y:-6,trail:"bodySpin3"},
+      {t:.64,pose:"backKick",y:-8,trail:"straight"},
+      {t:1,pose:"idle"}
+    ]},
+
+    huri:{name:"ティフリギ",dur:470,damage:14,bal:22,kb:54,range:145,height:-95,hit:[.54,.78],heavy:true,frames:[
+      {t:0,pose:"closed",y:-8,trail:"bodySpin1"},
+      {t:.20,pose:"back",y:-4,trail:"bodySpin2"},
+      {t:.38,pose:"backKick",y:-8,trail:"straight"},
+      {t:.62,pose:"hook",y:-5,trail:"ellipse"},
+      {t:1,pose:"idle"}
+    ]},
+
+    na:{name:"ネリョチャギ",dur:470,damage:10,bal:12,kb:24,range:112,height:-35,hit:[.52,.72],frames:[
+      {t:0,pose:"load"},{t:.30,pose:"axeUp",trail:"axe"},{t:.62,pose:"axeDown",trail:"axe"},{t:1,pose:"idle"}
+    ]},
+
+    jumpHuri:{name:"跳びティフリギ",dur:580,damage:17,bal:26,kb:70,range:150,height:-88,hit:[.42,.68],heavy:true,frames:[
+      {t:0,pose:"jumpLoad",trail:"bodySpin1"},
+      {t:.25,pose:"jumpBack",y:-26,trail:"straight"},
+      {t:.50,pose:"jumpHook",y:-20,trail:"ellipse"},
+      {t:.75,pose:"land"},{t:1,pose:"idle"}
+    ]},
+
+    retDol:{name:"下がりトルリョチャギ",dur:470,damage:7,bal:9,kb:28,range:125,height:-35,hit:[.38,.58],frames:[
+      {t:0,pose:"retreat",x:-20},{t:.45,pose:"round",x:-45,trail:"round"},{t:1,pose:"idle",x:-55}
+    ]},
+
+    retDwit:{name:"下がり跳びティッチャギ",dur:540,damage:12,bal:18,kb:48,range:160,height:-62,hit:[.36,.60],heavy:true,frames:[
+      {t:0,pose:"jumpLoad",x:-10,trail:"bodySpin1"},
+      {t:.42,pose:"jumpBack",x:-55,y:-24,trail:"straight"},
+      {t:1,pose:"idle",x:-65}
+    ]}
+  };
+})();
+
+
+/* ===== input.js ===== */
+(function(){
+  function Input(){
+    this.down = new Set();
+    this.events = [];
+    this.lastTap = {};
+    this.doubleTapMs = 260;
+    this.setupButtons();
+    this.setupKeys();
+  }
+  Input.prototype.press = function(name){
+    const now = performance.now();
+    if(this.down.has(name)) return;
+    this.down.add(name);
+    this.events.push({type:"press",name,time:now});
+    if(name==="left" || name==="right"){
+      if(now-(this.lastTap[name]||0)<this.doubleTapMs){
+        this.events.push({type:"double",name,time:now});
+      }
+      this.lastTap[name]=now;
+    }
+  };
+  Input.prototype.release = function(name){
+    this.down.delete(name);
+    this.events.push({type:"release",name,time:performance.now()});
+  };
+  Input.prototype.isDown = function(name){ return this.down.has(name); };
+  Input.prototype.consume = function(){ const e=this.events; this.events=[]; return e; };
+  Input.prototype.setupButtons = function(){
+    document.querySelectorAll("[data-btn]").forEach(el=>{
+      const name=el.dataset.btn;
+      el.addEventListener("pointerdown",e=>{e.preventDefault();el.classList.add("down");this.press(name);},{passive:false});
+      const up=e=>{e.preventDefault();el.classList.remove("down");this.release(name);};
+      el.addEventListener("pointerup",up,{passive:false});
+      el.addEventListener("pointercancel",up,{passive:false});
+      el.addEventListener("pointerleave",up,{passive:false});
+    });
+  };
+  Input.prototype.setupKeys = function(){
+    const map={ArrowUp:"up",ArrowLeft:"left",ArrowRight:"right",ArrowDown:"rotate",z:"small",x:"big",c:"guard",Z:"small",X:"big",C:"guard"};
+    addEventListener("keydown",e=>{
+      if(e.key==="r"||e.key==="R"){ this.events.push({type:"reset",name:"reset",time:performance.now()}); return; }
+      const b=map[e.key]; if(!b) return; e.preventDefault(); this.press(b);
+    });
+    addEventListener("keyup",e=>{const b=map[e.key]; if(!b) return; e.preventDefault(); this.release(b);});
+  };
+  window.Input = Input;
+})();
+
+
+/* ===== entities.js ===== */
+(function(){
+  function Fighter(x,y,facing,color,isPlayer){
+    this.x=x; this.y=y; this.f=facing; this.color=color; this.isPlayer=!!isPlayer;
+    this.hp=100; this.bal=100; this.id="idle"; this.move=MOVES.idle; this.time=0;
+    this.guard=false; this.armed=false; this.stun=0; this.hitFlash=0; this.ko=false;
+    this.lastHitMove=null; this.attackCooldown=0; this.counterBoost=0; this.counterText=0;
+    this.spinReady=0; this.spinBonus=0; this.spinText=0; this.stepTimer=0; this.stepDir=0;
+  }
+  Fighter.prototype.start = function(id){
+    this.id=id; this.move=MOVES[id]||MOVES.idle; this.time=0; this.lastHitMove=null;
+    this.armed=(id==="rot");
+  };
+  Fighter.prototype.progress = function(){
+    return this.move.dur ? Math.min(1,this.time/this.move.dur) : 0;
+  };
+  Fighter.prototype.frame = function(){
+    const p=this.progress(); let f=this.move.frames[0];
+    for(const k of this.move.frames){ if(p>=k.t) f=k; }
+    return f;
+  };
+  Fighter.prototype.resetRound = function(x){
+    this.x=x; this.hp=100; this.bal=100; this.id="idle"; this.move=MOVES.idle; this.time=0;
+    this.guard=false; this.armed=false; this.stun=0; this.hitFlash=0; this.ko=false;
+    this.lastHitMove=null; this.attackCooldown=.4; this.counterBoost=0; this.counterText=0;
+    this.spinReady=0; this.spinBonus=0; this.spinText=0; this.stepTimer=0; this.stepDir=0;
+  };
+  window.Fighter = Fighter;
+})();
+
+
+/* ===== effects.js ===== */
+(function(){
+  window.Effects = { hitStop:0, roundText:0, restartTimer:0, pWins:0, eWins:0, shake:0 };
+})();
+
+
+/* ===== collision.js ===== */
+(function(){
+  function isGuarding(target){ return target.guard && target.id==="idle" && target.stun<=0; }
+
+  function applyDamage(attacker,target,move){
+    let d=move.damage||0;
+    const spinBoost = attacker.isPlayer && attacker.spinBonus>0;
+    const counterBoost = attacker.isPlayer && attacker.counterBoost>0;
+    if(spinBoost) d=Math.ceil(d*(move.heavy?1.25:1.15));
+    if(counterBoost){ d=Math.ceil(d*1.5); attacker.counterBoost=0; }
+
+    if(isGuarding(target)){
+      d=Math.ceil(d*.25);
+      target.bal=Math.min(100,target.bal+4);
+      attacker.bal=Math.max(0,attacker.bal-(move.heavy?24:8));
+      if(move.heavy){
+        attacker.stun = spinBoost ? .62 : .42;
+        target.counterBoost=1;
+        target.counterText=.8;
+      }
+    }else{
+      target.bal=Math.max(0,target.bal-(move.bal||8)-(spinBoost?10:0));
+    }
+
+    const kb=(move.kb||20)+(spinBoost?18:0);
+    if(target.f<0) target.x += kb; else target.x -= kb;
+    if(move.push && isGuarding(target)) target.x += attacker.f*32;
+
+    target.hp=Math.max(0,target.hp-d);
+    target.hitFlash=.18;
+    Effects.hitStop = spinBoost ? .065 : (move.heavy ? .045 : .025);
+    if(target.bal<=0){ target.stun=1.0; target.bal=45; }
+
+    if(target.hp<=0 && !target.ko){
+      target.ko=true;
+      Effects.roundText=1.5;
+      Effects.restartTimer=2.2;
+      if(target.isPlayer) Effects.eWins++; else Effects.pWins++;
+    }
+  }
+
+  function tryHit(attacker,target){
+    const move=attacker.move;
+    if(!move.damage || attacker.lastHitMove===attacker.id) return;
+    const p=attacker.progress();
+    if(!move.hit || p<move.hit[0] || p>move.hit[1]) return;
+
+    const fr=attacker.frame();
+    const ax=attacker.x+(fr.x||0)*attacker.f;
+    const ay=attacker.y+(fr.y||0);
+    const hitX=ax+attacker.f*move.range;
+    const hitY=ay+move.height;
+    const tx=target.x-target.f*28;
+    const ty=target.y-70;
+
+    if(Math.abs(hitX-tx)<68 && Math.abs(hitY-ty)<78){
+      applyDamage(attacker,target,move);
+      attacker.lastHitMove=attacker.id;
+      if(attacker.isPlayer) attacker.spinBonus=0;
+    }
+  }
+
+  window.Collision = { tryHit };
+})();
+
+
+/* ===== cpu.js ===== */
+(function(){
+  function updateCPU(cpu,player,dt,W){
+    if(cpu.ko) return;
+    if(cpu.stun>0){ cpu.stun=Math.max(0,cpu.stun-dt); cpu.guard=false; return; }
+
+    if(cpu.id!=="idle"){
+      cpu.time+=dt*1000;
+      Collision.tryHit(cpu,player);
+      if(cpu.time>cpu.move.dur){ cpu.start("idle"); cpu.attackCooldown=.35+Math.random()*.45; }
+      return;
+    }
+
+    cpu.attackCooldown=Math.max(0,cpu.attackCooldown-dt);
+    const dist=cpu.x-player.x;
+    cpu.guard=false;
+
+    if(player.id!=="idle" && player.progress()<.58 && Math.random()<.028) cpu.guard=true;
+
+    if(dist>270) cpu.x-=105*dt;
+    else if(dist<145) cpu.x+=115*dt;
+    else if(cpu.attackCooldown<=0){
+      const r=Math.random();
+      if(dist<175 && r<.35) cpu.start("putcho");
+      else if(dist<230 && r<.62) cpu.start("milgi");
+      else if(r<.80) cpu.start("ap");
+      else if(r<.94) cpu.start("dol");
+      else cpu.start("na");
+    }
+    cpu.x=Math.max(W*.18,Math.min(W-70,cpu.x));
+  }
+  window.CPU = { update:updateCPU };
+})();
+
+
+/* ===== render.js ===== */
+(function(){
+  function Renderer(canvas){
+    this.canvas=canvas; this.ctx=canvas.getContext("2d"); this.resize();
+    addEventListener("resize",()=>this.resize());
+  }
+  Renderer.prototype.resize=function(){
+    this.W=innerWidth; this.H=innerHeight; const d=devicePixelRatio||1;
+    this.canvas.width=this.W*d; this.canvas.height=this.H*d; this.ctx.setTransform(d,0,0,d,0,0);
+  };
+
+  function line(ctx,x1,y1,x2,y2,w,c,a=1){
+    ctx.save();ctx.globalAlpha=a;ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore();
+  }
+  function arc(ctx,x,y,r,s,e,w=11,a=.35){
+    ctx.save();ctx.globalAlpha=a;ctx.strokeStyle="white";ctx.lineWidth=w;ctx.lineCap="round";
+    ctx.beginPath();ctx.arc(x,y,r,s,e);ctx.stroke();ctx.restore();
+  }
+  function ell(ctx,x,y,rx,ry,rot,s,e,w=12,a=.44){
+    ctx.save();ctx.globalAlpha=a;ctx.strokeStyle="white";ctx.lineWidth=w;ctx.lineCap="round";
+    ctx.beginPath();ctx.ellipse(x,y,rx,ry,rot,s,e);ctx.stroke();ctx.restore();
+  }
+  function bodySpin(ctx,x,y,f,phase){
+    const cx=x+f*2, cy=y-18;
+    ell(ctx,cx,cy-20,58,18,-.25,Math.PI*1.05,Math.PI*1.86,10,phase===2?.42:.32);
+    ell(ctx,cx,cy+28,54,16,-.22,Math.PI*.10,Math.PI*.86,10,.26);
+    if(phase===2) ell(ctx,cx,cy+66,48,15,-.18,Math.PI*.10,Math.PI*.78,9,.22);
+  }
+  function trails(ctx,x,y,f,t){
+    if(!t) return;
+    if(t==="bodySpin1") return bodySpin(ctx,x,y,f,1);
+    if(t==="bodySpin2") return bodySpin(ctx,x,y,f,2);
+    if(t==="bodySpin3") return bodySpin(ctx,x,y,f,3);
+    if(t==="short") line(ctx,x+f*34,y,x+f*84,y-3,8,"white",.34);
+    if(t==="snap") arc(ctx,x+f*44,y-12,46,f>0?-.55:Math.PI+.55,f>0?.15:Math.PI-.15,9,.35);
+    if(t==="push"){
+      line(ctx,x+f*126,y-50,x+f*126,y+10,10,"white",.32);
+      line(ctx,x+f*98,y-34,x+f*126,y-34,6,"white",.22);
+      line(ctx,x+f*98,y-6,x+f*126,y-6,6,"white",.22);
+    }
+    if(t==="round") arc(ctx,x+f*28,y-10,78,f>0?-.7:Math.PI+.7,f>0?.22:Math.PI-.22,11,.35);
+    if(t==="straight") line(ctx,x+f*20,y-35,x+f*170,y-65,12,"white",.40);
+    if(t==="ellipse") ell(ctx,x+f*145,y-72,95,44,-.22,f>0?Math.PI*1.08:-.08,f>0?Math.PI*1.88:Math.PI*.92,12,.48);
+    if(t==="axe") arc(ctx,x+f*50,y-40,98,f>0?-1.55:Math.PI+1.55,f>0?.65:Math.PI-.65,11,.35);
+  }
+
+  function fighter(ctx,u){
+    const fr=u.frame(); const x=u.x+(fr.x||0)*u.f, y=u.y+(fr.y||0), f=u.f, color=u.hitFlash>0?"#fff":(u.guard?"#9fd8ff":u.color), pose=fr.pose||"idle";
+    const ground=y+118; let head={x,y:y-100}, top={x,y:y-62}, hip={x,y:y+5}, fh={x:x+f*48,y:y-42}, rh={x:x-f*38,y:y-22}, fa={x:x-f*36,y:ground}, fb={x:x+f*58,y:ground}, ka={x:x-f*18,y:y+56}, kb={x:x+f*35,y:y+56};
+
+    if(pose==="load"){hip.x-=f*8;kb.x-=f*16;fb.x-=f*20}
+    if(pose==="stepIn"){hip.x+=f*12;fa.x+=f*18;fb.x+=f*18}
+    if(pose==="putchoLoad"){kb={x:x+f*44,y:y+8};fb={x:x+f*62,y:y+18}}
+    if(pose==="putcho"){kb={x:x+f*55,y:y-14};fb={x:x+f*118,y:y-38}}
+    if(pose==="pushLoad"){hip.x-=f*4;kb={x:x+f*45,y:y-2};fb={x:x+f*58,y:y+8}}
+    if(pose==="pushKick"){hip.x-=f*12;top.x-=f*8;kb={x:x+f*78,y:y-18};fb={x:x+f*150,y:y-18};fh={x:x+f*34,y:y-42}}
+    if(pose==="knee"){kb={x:x+f*50,y:y};fb={x:x+f*70,y:y+10}}
+    if(pose==="front"){kb={x:x+f*58,y:y-5};fb={x:x+f*125,y:y-10}}
+    if(pose==="round"){hip.x-=f*6;kb={x:x+f*60,y:y-10};fb={x:x+f*135,y:y-35}}
+    if(pose==="axeUp"){kb={x:x+f*52,y:y-55};fb={x:x+f*75,y:y-132}}
+    if(pose==="axeDown"){kb={x:x+f*78,y:y-35};fb={x:x+f*116,y:y+24}}
+    if(pose==="closed"){fa={x:x-f*10,y:ground-18};fb={x:x+f*12,y:ground-18};ka={x:x-f*8,y:y+58};kb={x:x+f*10,y:y+58};fh={x:x+f*25,y:y-40};rh={x:x-f*25,y:y-30}}
+    if(pose==="back"){head.x=x-f*8;fh={x:x-f*28,y:y-35};rh={x:x+f*20,y:y-30};fa={x:x+f*25,y:ground};fb={x:x-f*42,y:ground};ka={x:x+f*18,y:y+55};kb={x:x-f*26,y:y+55}}
+    if(pose==="backLoad"){head.x=x-f*22;hip.x=x-f*6;kb={x:x+f*18,y:y};fb={x:x+f*40,y:y+20};fa={x:x-f*8,y:ground}}
+    if(pose==="backKick"||pose==="jumpBack"){head.x=x-f*24;top.x=x-f*10;hip.x=x-f*8;kb={x:x+f*70,y:y-34};fb={x:x+f*160,y:y-62};fa={x:x-f*6,y:ground};ka={x:x-f*4,y:y+58}}
+    if(pose==="hook"||pose==="jumpHook"){head.x=x-f*22;top.x=x-f*10;hip.x=x-f*6;kb={x:x+f*96,y:y-72};fb={x:x+f*130,y:y-110};fa={x:x-f*8,y:ground};ka={x:x-f*5,y:y+58}}
+    if(pose==="jumpLoad"){hip.y+=6;kb={x:x+f*30,y:y+25};fb={x:x+f*46,y:y+48}}
+    if(pose==="retreat"){hip.x-=f*18;fa.x-=f*22;fb.x-=f*28}
+    if(pose==="land")hip.y+=8;
+
+    trails(ctx,x,y,f,fr.trail);
+    if(u.spinBonus && (fr.trail==="straight"||fr.trail==="ellipse")){
+      ctx.save();ctx.globalAlpha=.42;ctx.strokeStyle="white";ctx.lineWidth=5;ctx.beginPath();ctx.arc(x+f*80,y-55,42,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+    if(u.guard){ctx.save();ctx.globalAlpha=.55;ctx.strokeStyle="#9fd8ff";ctx.lineWidth=5;ctx.beginPath();ctx.arc(x+f*42,y-45,42,f>0?2.1:-1.1,f>0?4.2:1.1);ctx.stroke();ctx.restore();}
+
+    line(ctx,top.x,top.y,hip.x,hip.y,22,color);
+    line(ctx,top.x,top.y,fh.x,fh.y,14,color); line(ctx,top.x,top.y+8,rh.x,rh.y,14,color);
+    line(ctx,hip.x,hip.y,ka.x,ka.y,18,color); line(ctx,ka.x,ka.y,fa.x,fa.y,18,color);
+    line(ctx,hip.x,hip.y,kb.x,kb.y,18,color); line(ctx,kb.x,kb.y,fb.x,fb.y,18,color);
+    line(ctx,fa.x-f*12,fa.y+2,fa.x+f*18,fa.y+2,12,"#07101f");
+    if(pose==="pushKick"){
+      // 押し蹴り：足裏を相手に向ける。足先ではなく「縦の面」で押す。
+      ctx.save();
+      ctx.strokeStyle="#07101f";
+      ctx.lineWidth=18;
+      ctx.lineCap="round";
+      ctx.beginPath();
+      ctx.moveTo(fb.x+f*4,fb.y-30);
+      ctx.lineTo(fb.x+f*4,fb.y+30);
+      ctx.stroke();
+
+      // 足裏の面をわかりやすくする白いハイライト
+      ctx.globalAlpha=.35;
+      ctx.strokeStyle="white";
+      ctx.lineWidth=4;
+      ctx.beginPath();
+      ctx.moveTo(fb.x-f*3,fb.y-22);
+      ctx.lineTo(fb.x-f*3,fb.y+22);
+      ctx.stroke();
+      ctx.restore();
+    }else{
+      line(ctx,fb.x-f*12,fb.y+2,fb.x+f*18,fb.y+2,12,"#07101f");
+    }
+    ctx.fillStyle="#ffd2b0"; ctx.beginPath();ctx.arc(fh.x,fh.y,12,0,Math.PI*2);ctx.fill(); ctx.beginPath();ctx.arc(rh.x,rh.y,12,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="#ffc59f"; ctx.beginPath();ctx.arc(head.x,head.y,28,0,Math.PI*2);ctx.fill(); ctx.fillStyle="#111";ctx.beginPath();ctx.arc(head.x+f*10,head.y-5,5,0,Math.PI*2);ctx.fill();
+
+    if(u.hitFlash>0){
+      ctx.save();ctx.strokeStyle="white";ctx.lineWidth=4;ctx.globalAlpha=.9;const sx=x+f*42,sy=y-78;
+      ctx.beginPath();ctx.moveTo(sx-18,sy);ctx.lineTo(sx+18,sy);ctx.moveTo(sx,sy-18);ctx.lineTo(sx,sy+18);ctx.moveTo(sx-13,sy-13);ctx.lineTo(sx+13,sy+13);ctx.moveTo(sx-13,sy+13);ctx.lineTo(sx+13,sy-13);ctx.stroke();ctx.restore();
+    }
+  }
+
+  Renderer.prototype.draw=function(player,cpu){
+    const ctx=this.ctx,W=this.W,H=this.H;
+    ctx.fillStyle="#182536";ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#2c3b49";ctx.fillRect(0,H*.47,W,H*.53);
+    line(ctx,0,H*.79,W,H*.79,3,"rgba(255,255,255,.35)");
+    fighter(ctx,cpu); fighter(ctx,player);
+    if(player.counterText>0){ctx.save();ctx.fillStyle="white";ctx.font="900 26px system-ui";ctx.fillText("COUNTER CHANCE!",W*.33,H*.28);ctx.restore();}
+    if(Effects.roundText>0 || player.ko || cpu.ko){
+      ctx.save();ctx.textAlign="center";ctx.fillStyle="white";ctx.font="900 54px system-ui";ctx.fillText(player.ko?"YOU LOSE":"K.O.",W/2,H*.34);
+      ctx.font="900 18px system-ui";ctx.fillText("NEXT ROUND...",W/2,H*.34+36);ctx.fillText("PLAYER "+Effects.pWins+" - "+Effects.eWins+" CPU",W/2,H*.34+62);ctx.restore();
+    }
+  };
+  window.Renderer=Renderer;
+})();
+
+
+/* ===== game.js ===== */
+(function(){
+  const canvas=document.getElementById("game");
+  const renderer=new Renderer(canvas);
+  const input=new Input();
+  const player=new Fighter(innerWidth*.30,innerHeight*.50,1,"#1594ff",true);
+  const cpu=new Fighter(innerWidth*.70,innerHeight*.50,-1,"#ff3a48",false);
+
+  function updateHud(){
+    document.getElementById("pHp").style.width=player.hp+"%";
+    document.getElementById("eHp").style.width=cpu.hp+"%";
+    document.getElementById("pBal").style.width=player.bal+"%";
+    document.getElementById("eBal").style.width=cpu.bal+"%";
+    const spin=document.getElementById("spinText");
+    if(player.spinText>0) spin.textContent="SPIN BONUS!";
+    else if(player.spinReady>0 && player.id==="rot") spin.textContent="SPIN READY";
+    else spin.textContent="";
+  }
+
+  function resetAll(){
+    Effects.hitStop=0;Effects.roundText=0;Effects.restartTimer=0;Effects.pWins=0;Effects.eWins=0;
+    player.resetRound(innerWidth*.30); cpu.resetRound(innerWidth*.70);
+    document.getElementById("moveName").textContent="構え";
+  }
+
+  function startPlayer(id){
+    player.start(id);
+    document.getElementById("moveName").textContent=player.move.name;
+  }
+
+  function handleInput(dt){
+    player.guard=input.isDown("guard") && player.id==="idle" && player.stun<=0;
+    player.spinReady=Math.max(0,player.spinReady-dt);
+    player.spinText=Math.max(0,player.spinText-dt);
+    player.stepTimer=Math.max(0,player.stepTimer-dt);
+    player.counterText=Math.max(0,player.counterText-dt);
+
+    const evs=input.consume();
+    for(const ev of evs){
+      if(ev.type==="reset"){ resetAll(); continue; }
+      if(ev.type==="double" && ev.name==="right"){ player.stepTimer=.32; player.stepDir=1; player.x+=40; continue; }
+      if(ev.type==="double" && ev.name==="left"){ player.stepTimer=.32; player.stepDir=-1; player.x-=40; continue; }
+      if(ev.type!=="press" || player.stun>0 || player.ko) continue;
+
+      const up=input.isDown("up"), back=input.isDown("left"), forward=input.isDown("right");
+      if((player.armed || player.id==="rot" || player.spinReady>0) && ev.name==="small"){
+        player.spinBonus=player.spinReady>0?1:0; if(player.spinBonus)player.spinText=.55; startPlayer("dwit");
+      }else if((player.armed || player.id==="rot" || player.spinReady>0) && ev.name==="big"){
+        player.spinBonus=player.spinReady>0?1:0; if(player.spinBonus)player.spinText=.55; startPlayer("huri");
+      }else if(ev.name==="rotate"){
+        startPlayer("rot");
+      }else if(ev.name==="small" && up){
+        startPlayer("na");
+      }else if(ev.name==="big" && up){
+        startPlayer("jumpHuri");
+      }else if((ev.name==="small" || ev.name==="big") && input.isDown("guard") && (forward || (player.stepTimer>0 && player.stepDir===1))){
+        startPlayer("milgi");
+      }else if(ev.name==="small" && (forward || (player.stepTimer>0 && player.stepDir===1))){
+        startPlayer("putcho");
+      }else if(ev.name==="small" && back){
+        startPlayer("retDol");
+      }else if(ev.name==="big" && back){
+        startPlayer("retDwit");
+      }else if(ev.name==="small"){
+        startPlayer("ap");
+      }else if(ev.name==="big"){
+        startPlayer("dol");
+      }
+    }
+  }
+
+  function updatePlayer(dt){
+    if(player.stun>0){ player.stun=Math.max(0,player.stun-dt); return; }
+    if(player.id==="idle"){
+      if(input.isDown("left")) player.x-=160*dt;
+      if(input.isDown("right")) player.x+=160*dt;
+    }else{
+      if(player.id==="rot" || player.id==="dwit" || player.id==="huri"){
+        if(input.isDown("right")) player.x+=90*dt;
+        if(input.isDown("left")) player.x-=90*dt;
+      }
+      player.time+=dt*1000;
+      if(player.id==="rot"){
+        const rp=player.progress();
+        if(rp>.76 && rp<.96) player.spinReady=input.isDown("right")?.22:.16;
+      }
+      Collision.tryHit(player,cpu);
+      if(player.time>player.move.dur) startPlayer("idle");
+    }
+    player.x=Math.max(60,Math.min(innerWidth-60,player.x));
+  }
+
+  function updateRound(dt){
+    if(player.ko || cpu.ko){
+      Effects.roundText=Math.max(0,Effects.roundText-dt);
+      Effects.restartTimer=Math.max(0,Effects.restartTimer-dt);
+      if(Effects.restartTimer<=0){
+        player.resetRound(innerWidth*.30);
+        cpu.resetRound(innerWidth*.70);
+        Effects.roundText=0; Effects.hitStop=0;
+        document.getElementById("moveName").textContent="構え";
+      }
+      return true;
+    }
+    return false;
+  }
+
+  let last=performance.now();
+  function loop(now){
+    const dt=Math.min(.033,(now-last)/1000); last=now;
+    player.y=innerHeight*.50; cpu.y=innerHeight*.50;
+
+    if(Effects.hitStop>0){ Effects.hitStop=Math.max(0,Effects.hitStop-dt); updateHud(); renderer.draw(player,cpu); requestAnimationFrame(loop); return; }
+    if(!updateRound(dt)){
+      handleInput(dt);
+      updatePlayer(dt);
+      CPU.update(cpu,player,dt,innerWidth);
+      Collision.tryHit(cpu,player);
+      player.hitFlash=Math.max(0,player.hitFlash-dt); cpu.hitFlash=Math.max(0,cpu.hitFlash-dt);
+    }
+    updateHud();
+    renderer.draw(player,cpu);
+    requestAnimationFrame(loop);
+  }
+  resetAll();
+  requestAnimationFrame(loop);
+})();
+
+</script>
+</body>
+</html>

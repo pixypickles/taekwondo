@@ -1,0 +1,26 @@
+html,body{
+  margin:0;width:100%;height:100%;overflow:hidden;background:#172434;
+  touch-action:none;font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;
+}
+#game{display:block;width:100vw;height:100vh}
+#bars{position:fixed;top:8px;left:10px;right:10px;height:56px;z-index:5;color:#fff;font-weight:900;text-shadow:0 2px 4px #000;pointer-events:none}
+.barWrap{position:absolute;top:18px;width:38%;height:18px;border:2px solid rgba(255,255,255,.65);background:rgba(0,0,0,.25);border-radius:12px;overflow:hidden}
+.hp{height:100%;width:100%;background:#23d45a}
+.balWrap{position:absolute;top:42px;width:38%;height:8px;border:1px solid rgba(255,255,255,.45);background:rgba(0,0,0,.25);border-radius:8px;overflow:hidden}
+.bal{height:100%;width:100%;background:#8be4ff}
+#pHpWrap,#pBalWrap{left:0}#eHpWrap,#eBalWrap{right:0}
+#pLabel{position:absolute;left:3px;top:0;font-size:12px}#eLabel{position:absolute;right:3px;top:0;font-size:12px}
+#hud{position:fixed;top:68px;left:10px;color:white;text-shadow:0 2px 4px #000;z-index:4;pointer-events:none}
+#moveName{font-size:20px;font-weight:900}
+#spinText{font-size:16px;font-weight:900;letter-spacing:.05em;margin-top:3px}
+#debug{font-size:12px;opacity:.75;margin-top:3px}
+#controls{position:fixed;left:0;right:0;bottom:max(12px,env(safe-area-inset-bottom));height:172px;z-index:10;pointer-events:none}
+button{position:absolute;width:66px;height:66px;border-radius:50%;border:3px solid rgba(255,255,255,.48);background:rgba(255,255,255,.20);color:#fff;font-size:28px;font-weight:900;pointer-events:auto;user-select:none;-webkit-tap-highlight-color:transparent}
+button.down,button:active{transform:scale(.94);background:rgba(255,255,255,.36)}
+.up{left:96px;bottom:96px}.left{left:24px;bottom:28px}.rotate{left:96px;bottom:28px;background:rgba(190,170,70,.45)}.right{left:168px;bottom:28px}
+.small{right:184px;bottom:28px;background:rgba(30,135,255,.48)}.big{right:106px;bottom:28px;background:rgba(255,70,80,.50)}.guard{right:28px;bottom:28px;background:rgba(30,35,45,.72)}
+@media(max-height:640px){
+  #controls{height:148px}button{width:58px;height:58px;font-size:24px}
+  .up{left:92px;bottom:82px}.left{left:26px;bottom:22px}.rotate{left:92px;bottom:22px}.right{left:158px;bottom:22px}
+  .small{right:164px;bottom:22px}.big{right:94px;bottom:22px}.guard{right:24px;bottom:22px}
+}
